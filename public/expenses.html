@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Premium User</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .pagination {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Day to Day Expenses</h1>
+
+     <!-- Logout Button -->
+     <button onclick="home()" class="btn btn-primary float-start">Back</button>
+
+    
+    <!-- Year and Month Selector -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-3">
+            <select id="yearSelect" class="form-select" onchange="updateExpenses()">
+                <!-- Will be populated dynamically -->
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="monthSelect" class="form-select" onchange="updateExpenses()">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Expenses Per Page Selector -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-3">
+            <label for="expensesPerPageSelect" class="form-label">Expenses per page:</label>
+            <select id="expensesPerPageSelect" class="form-select" onchange="updateExpensesPerPage()">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="40">40</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Daily Transactions Table -->
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Income</th>
+                    <th>Expense</th>
+                </tr>
+            </thead>
+            <tbody id="dailyTransactionsBody">
+                <!-- Will be populated dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="pagination" id="pagination-controls"></div>
+
+    <!-- Yearly Report -->
+    <h2 class="text-center mb-4">Yearly Report</h2>
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Month</th>
+                    <th>Income</th>
+                    <th>Expense</th>
+                    <th>Savings</th>
+                </tr>
+            </thead>
+            <tbody id="yearlyReportBody">
+                <!-- Will be populated dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Download Button -->
+    <div class="text-center mb-5">
+        <button id="downloadExpensesBtn" class="btn btn-primary" onclick="downloadExpenses()" disabled>
+            <i class="fas fa-download"></i> Download Report
+        </button>
+    </div>
+    <!-- Display All Expense Reports -->
+    <h2 class="text-center mb-4">Your Previous Expense Reports</h2>
+    <div id="reportsContainer" class="text-center mb-5">
+        <ul id="reportsList" class="list-group">
+            <!-- Reports will be populated dynamically -->
+        </ul>
+    </div>
+    
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<script>
+let currentPage = 1;
+let expensesPerPage = 10; // Default value
+let expenses = [];
+
+// Load expenses per page from local storage or use default
+const loadExpensesPerPage = () => {
+    const storedValue = localStorage.getItem("expensesPerPage");
+    return storedValue ? parseInt(storedValue) : expensesPerPage;
+};
+
+document.addEventListener("DOMContentLoaded", async () => {
+    // Populate year select
+    const currentYear = new Date().getFullYear();
+    const yearSelect = document.getElementById('yearSelect');
+    for(let year = currentYear; year >= currentYear - 5; year--) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearSelect.appendChild(option);
+    }
+
+    // Set current month in month select
+    document.getElementById('monthSelect').value = new Date().getMonth();
+    
+    // Set expenses per page from local storage
+    expensesPerPage = loadExpensesPerPage();
+    document.getElementById('expensesPerPageSelect').value = expensesPerPage;
+
+    // Fetch expenses on load
+    await fetchExpenses();
+    await fetchUserExpenseReports();
+});
+
+        function home() {
+            window.location.href = "/home.html";
+        }
+async function fetchExpenses() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        window.location.href = "/signin.html"; // Redirect if not logged in
+        return;
+    }
+
+    try {
+        const response = await fetch("http://localhost:5000/api/expenses", {
+      //  const response = await fetch("http://65.0.178.125:5000/api/expenses", {
+                method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch expenses");
+        }
+
+        expenses = await response.json();
+        localStorage.setItem("expenses", JSON.stringify(expenses)); // Store expenses in localStorage
+        updateExpenses(); // Update the displayed expenses
+        document.getElementById("downloadExpensesBtn").disabled = false; // Enable download button
+
+    } catch (error) {
+        console.error("Error fetching expenses:", error);
+        alert("Error fetching expenses: " + error.message);
+    }
+}
+
+function updateExpenses() {
+    const selectedYear = document.getElementById('yearSelect').value;
+    const selectedMonth = document.getElementById('monthSelect').value;
+    const filteredExpenses = expenses.filter(expense => {
+        const expenseDate = new Date(expense.createdAt);
+        return expenseDate.getFullYear() == selectedYear && 
+               expenseDate.getMonth() == selectedMonth;
+    });
+
+    displayDailyTransactions(filteredExpenses);
+    displayMonthlyReport(filteredExpenses, selectedMonth);
+}
+
+// Update expenses per page based on user selection
+function updateExpensesPerPage() {
+    const selectedValue = document.getElementById('expensesPerPageSelect').value;
+    localStorage.setItem("expensesPerPage", selectedValue);
+    expensesPerPage = parseInt(selectedValue);
+    currentPage = 1; // Reset to first page
+    updateExpenses(); // Refresh the displayed expenses
+}
+
+function displayDailyTransactions(expenses) {
+    const tbody = document.getElementById('dailyTransactionsBody');
+    tbody.innerHTML = '';
+
+    const start = (currentPage - 1) * expensesPerPage;
+    const end = start + expensesPerPage;
+    const paginatedExpenses = expenses.slice(start, end);
+
+    if (paginatedExpenses.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td colspan="5" class="text-center">No transactions found for selected month</td>
+        `;
+        tbody.appendChild(row);
+        return;
+    }
+
+    paginatedExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    paginatedExpenses.forEach(expense => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${new Date(expense.createdAt).toLocaleDateString()}</td>
+            <td>${expense.description}</td>
+            <td>${expense.category}</td>
+            <td>${expense.type === 'income' ? '₹' + expense.amount : '-'}</td>
+            <td>${expense.type === 'expense' ? '₹' + expense.amount : '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    updatePaginationControls(expenses.length);
+}
+
+function displayMonthlyReport(expenses, selectedMonth) {
+    const tbody = document.getElementById('yearlyReportBody');
+    tbody.innerHTML = '';
+
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                   'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const income = expenses
+        .filter(e => e.type === 'income')
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+    
+    const expense = expenses
+        .filter(e => e.type === 'expense')
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+
+    const savings = income - expense;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>${months[selectedMonth]}</td>
+        <td>₹${income}</td>
+        <td>₹${expense}</td>
+        <td>₹${savings}</td>
+    `;
+    tbody.appendChild(row);
+}
+
+async function downloadExpenses() {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/api/download", {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to generate expense report");
+        }
+
+        // Get the CSV as a blob and trigger download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "expense_report.csv";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error("Error downloading expenses:", error.message);
+        alert("Error downloading expenses. Please try again.");
+    }
+}
+
+// async function downloadExpenses() {
+//     try {
+//         const token = localStorage.getItem("token");
+
+//         // Request the expense report from the backend (which generates & uploads to S3)
+//      const response = await fetch("http://localhost:5000/api/download", {
+//      //const response = await fetch("http://65.0.178.125:5000/api/download", {
+//                 method: "GET",
+//             headers: { "Authorization": `Bearer ${token}` },
+//         });
+
+//         if (!response.ok) {
+//             throw new Error("Failed to generate expense report");
+//         }
+
+//         const data = await response.json();
+
+//         if (!data.fileURL) {
+//             throw new Error("File URL not received");
+//         }
+
+//         // Download the file from S3
+//         const a = document.createElement("a");
+//         a.href = data.fileURL;
+//         a.download = "expense_report.csv"; // You can change the name of the report if needed
+//         document.body.appendChild(a);
+//         a.click();
+//         document.body.removeChild(a);
+        
+
+//     } catch (error) {
+//         console.error("Error downloading expenses:", error.message);
+//         alert("Error downloading expenses. Please try again.");
+//     }
+// }
+
+async function fetchUserExpenseReports() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        window.location.href = "/signin.html"; // Redirect if not logged in
+        return;
+    }
+
+    try {
+        const response = await fetch("http://localhost:5000/api/reports", {
+     //   const response = await fetch("http://65.0.178.125:5000/api/reports", {
+                method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch expense reports");
+        }
+
+        const reports = await response.json();
+        console.log("Expense Reports:", reports);
+
+        // Display the reports in the UI
+        const reportsList = document.getElementById("reportsList");
+        reportsList.innerHTML = ''; // Clear previous content
+
+      // Check if reports are available
+        if (reports.length > 0) {
+            reports.forEach(report => {
+                const listItem = document.createElement("li");
+                listItem.className = "list-group-item";
+                const reportDate = new Date(report.createdAt).toLocaleDateString(); // Format the date
+                listItem.innerHTML = `
+                    <strong>File Name:</strong> ${report.fileName} <br>
+                    <strong>Date:</strong> ${reportDate} <br>
+                    <a href="${report.fileUrl}" target="_blank">Download Report for View</a>
+                `;
+                reportsList.appendChild(listItem);
+            });
+        }else {
+            reportsList.innerHTML = '<li class="list-group-item">No expense reports found.</li>';
+        }
+
+    } catch (error) {
+        console.error("Error fetching expense reports:", error);
+        alert("Error fetching expense reports: " + error.message);
+    }
+}
+
+
+function updatePaginationControls(totalExpenses) {
+    const paginationControls = document.getElementById("pagination-controls");
+    paginationControls.innerHTML = ""; // Clear existing controls
+
+    const totalPages = Math.ceil(totalExpenses / expensesPerPage);
+
+    if (currentPage > 1) {
+        const prevButton = document.createElement("button");
+        prevButton.textContent = "Previous";
+        prevButton.className = "btn btn-secondary";
+        prevButton.onclick = () => {
+            currentPage--;
+            updateExpenses();
+        };
+        paginationControls.appendChild(prevButton);
+    }
+
+    const pageInfo = document.createElement("span");
+    pageInfo.textContent = ` Page ${currentPage} of ${totalPages} `;
+    paginationControls.appendChild(pageInfo);
+
+    if (currentPage < totalPages) {
+        const nextButton = document.createElement("button");
+        nextButton.textContent = "Next";
+        nextButton.className = "btn btn-secondary";
+        nextButton.onclick = () => {
+            currentPage++;
+            updateExpenses();
+        };
+        paginationControls.appendChild(nextButton);
+    }
+}
+</script>
+
+</body>
+</html>
