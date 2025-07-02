@@ -53,6 +53,10 @@ app.get("/payment/response", (req, res) => {
     res.sendFile(path.join(process.cwd(), "public", "paymentResponse.html"));
 });
 
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "signin.html"));
+});
+
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "signin.html"));
