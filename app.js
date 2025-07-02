@@ -54,6 +54,10 @@ app.get("/payment/response", (req, res) => {
 });
 
 
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "signin.html"));
+});
+
 mongoose.connect(
   'mongodb+srv://narender:Narender123@cluster0.qbghm3r.mongodb.net/Expenses_Tracking?retryWrites=true&w=majority&appName=Cluster0'
 
