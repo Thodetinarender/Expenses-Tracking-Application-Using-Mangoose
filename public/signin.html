@@ -54,7 +54,7 @@
     const password = document.getElementById("password").value;
 
     try {
-        const response = await fetch("https://expenses-tracking-application.onrender.com/api/signin", {
+        const response = await fetch("https://expenses-tracking-application.onrender.com/signin", {
         //const response = await fetch("http://65.0.178.125:5000/api/signin", {
             method: "POST",
             headers: {
@@ -100,7 +100,7 @@ document.getElementById("forgotPasswordFormElement").addEventListener("submit", 
         submitButton.disabled = true;
         submitButton.textContent = "Sending...";
 
-        const response = await fetch("https://expenses-tracking-application.onrender.com/api/password/forgot", {
+        const response = await fetch("https://expenses-tracking-application.onrender.com/password/forgot", {
         //const response = await fetch("http://65.0.178.125:5000/api/password/forgot", {
             method: "POST",
             headers: {
