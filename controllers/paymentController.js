@@ -44,8 +44,8 @@ const createOrder = async (req, res) => {
                 customer_phone: customerPhone, 
             },
             order_meta: {
-                return_url: `http://localhost:5000/payment/response?order_id=${orderId}`,
-                notify_url: "http://localhost:5000/api/payment/webhook", // Webhook URL for notification
+                return_url: `https://expenses-tracking-application.onrender.com/payment/response?order_id=${orderId}`,
+                notify_url: "https://expenses-tracking-application.onrender.com/api/payment/webhook", // Webhook URL for notification
                // return_url: `http://65.0.178.125:5000/payment/response?order_id=${orderId}`,
                // notify_url: "http://65.0.178.125:5000/api/payment/webhook", // Webhook URL for notification           
             },
@@ -86,7 +86,7 @@ const createOrder = async (req, res) => {
                 amount: Number(amount),
                 status: "FAILED", // Failed status
             });
-            return res.redirect(`http://localhost:5000/payment/response?order_id=${orderId}`); // Redirect on failure
+            return res.redirect(`https://expenses-tracking-application.onrender.com/payment/response?order_id=${orderId}`); // Redirect on failure
             //return res.redirect(`http://65.0.178.125:5000/payment/response?order_id=${orderId}`); // Redirect on failure
         }
     } catch (error) {
